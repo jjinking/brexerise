@@ -1,58 +1,47 @@
 import asyncio
 import curses
-import time
 import sys
 from datetime import datetime
 
 KEYS_EXIT = {27, ord('q'), ord('Q')}
 
-
-@asyncio.coroutine
-def get_user_input(window):
-    yield window.getchr()
+HEIGHT = 10
+WIDTH = 46
 
 
 @asyncio.coroutine
-def listen(window):
-    while True:
-        yield from get_user_input()
-        if key in self.KEYS_EXIT:
-            break
-
-
-@asyncio.coroutine
-def main_menu():
+def main_menu(window):
     # Set up window
-    height = 10
-    width = 46
-    begin_y = (curses.LINES - 1) // 2 - height // 2
-    begin_x = (curses.COLS - 1) // 2 - width // 2
-    window = curses.newwin(height, width, begin_y, begin_x)
     window.border(0)
 
     # Add welcome message at the top
     top_message = "Welcome to Brexercise (Break and Exercise)!"
-    window.addstr(0, width // 2 - len(top_message) // 2, top_message)
+    window.addstr(0, WIDTH // 2 - len(top_message) // 2, top_message)
     window.addstr(2, 2, "Select from one of the following options:")
     window.addstr(4, 4, "S - Start Timer")
     window.addstr(5, 4, "Q - Exit Program")
-
     while True:
-        yield from asyncio.sleep(0.2)
         window.addstr(
             8, 2, datetime.now().strftime("%A, %d. %B %Y %I:%M:%S%p"))
+
+        key = window.getch()
+        if key in KEYS_EXIT:
+            break
+
         window.refresh()
+        yield from asyncio.sleep(0.2)
 
 
 def main(stdscr):
-    main_menu()
+    # Invisible cursor
+    curses.curs_set(0)
+    BEGIN_Y = (curses.LINES - 1) // 2 - HEIGHT // 2
+    BEGIN_X = (curses.COLS - 1) // 2 - WIDTH // 2
+    window = curses.newwin(HEIGHT, WIDTH, BEGIN_Y, BEGIN_X)
+    window.nodelay(True)  # Nonblocking
     loop = asyncio.get_event_loop()
-    tasks = [
-        asyncio.async(main_menu()),
-        # asyncio.ensure_future(listen()),
-    ]
     try:
-        loop.run_until_complete(asyncio.wait(tasks))
+        loop.run_until_complete(main_menu(window))
     finally:
         loop.close()
 
