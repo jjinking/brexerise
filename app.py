@@ -23,13 +23,17 @@ def main_menu(window):
     while True:
         window.addstr(
             8, 2, datetime.now().strftime("%A, %d. %B %Y %I:%M:%S%p"))
-
-        key = window.getch()
-        if key in KEYS_EXIT:
-            break
-
         window.refresh()
         yield from asyncio.sleep(0.2)
+
+
+def process_input(window):
+    """
+    User input
+    """
+    key = window.getch()
+    if key in KEYS_EXIT:
+        sys.exit(1)
 
 
 def main(stdscr):
@@ -41,6 +45,8 @@ def main(stdscr):
     window.nodelay(True)  # Nonblocking
     loop = asyncio.get_event_loop()
     try:
+        # Add listener for user keyboard input
+        loop.add_reader(sys.stdin, process_input, window)
         loop.run_until_complete(main_menu(window))
     finally:
         loop.close()
