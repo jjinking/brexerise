@@ -3,15 +3,10 @@ import curses
 import sys
 from datetime import datetime
 
+ESC_KEY = 27
+
 
 class Widget:
-
-    def __init__(self, key_action):
-        '''
-        Initialize user input keys to actions
-        key_actions is a dictionary mapping characters to functions
-        '''
-        self.key_action = key_action
 
     def show(self):
         '''
@@ -25,23 +20,44 @@ class Widget:
         Handle user input key by running corresponding function
         '''
         key = self.w.getch()
-        if key in self.key_action:
-            self.key_action[key]()
+        if key in {ord('q'), ord('Q')}:
+            self.stop()
 
     def run(self):
-        loop = asyncio.get_event_loop()
+        '''
+        Show this widget and set up keyboard listener
+        '''
+        self.loop = asyncio.get_event_loop()
         try:
             # Add listener for user keyboard input
-            loop.add_reader(sys.stdin, self.process_input)
-            loop.run_until_complete(self.show())
+            self.loop.add_reader(sys.stdin, self.process_input)
+
+            # Show this widget
+            self.show_task = asyncio.async(self.show())
+            self.loop.run_forever()
         finally:
-            loop.close()
+            self.loop.close()
+
+    def stop(self):
+        '''
+        Stop showing this widget
+        '''
+        self.show_task.cancel()
+        self.loop.remove_reader(sys.stdin)
+        self.loop.stop()
 
 
 class Timer(Widget):
 
     HEIGHT = 10
     WIDTH = 46
+
+    def process_input(self):
+        key = self.w.getch()
+        if key == ESC_KEY:
+            sys.exit(1)
+        elif key in {ord('q'), ord('Q')}:
+            sys.exit(1)
 
     def show(self):
         BEGIN_Y = (curses.LINES - 1) // 2 - self.HEIGHT // 2
@@ -68,6 +84,13 @@ class MainMenu(Widget):
     HEIGHT = 10
     WIDTH = 46
 
+    def process_input(self):
+        key = self.w.getch()
+        if key in {ESC_KEY, ord('q'), ord('Q')}:
+            self.stop()
+        elif key in {ord('s'), ord('S')}:
+            self.stop()
+
     def show(self):
         BEGIN_Y = (curses.LINES - 1) // 2 - self.HEIGHT // 2
         BEGIN_X = (curses.COLS - 1) // 2 - self.WIDTH // 2
@@ -89,21 +112,22 @@ class MainMenu(Widget):
             yield from asyncio.sleep(0.2)
 
 
-class App:
+class AppManager:
+
     def run(self, stdscr):
         # Invisible cursor
         curses.curs_set(0)
 
-        # Show main menu
-        MainMenu({
-            27: lambda: sys.exit(1),
-            ord('q'): lambda: sys.exit(1),
-            ord('Q'): lambda: sys.exit(1)}).run()
+    def show_main_menu(self):
+        MainMenu().run()
+
+    def show_timer(self):
+        Timer().run()
 
 
 if __name__ == "__main__":
     try:
-        curses.wrapper(App().run)
+        curses.wrapper(AppManager().run)
     except KeyboardInterrupt:
         sys.stderr.write("Ctrl-c exit\n\n")
         sys.exit(1)
