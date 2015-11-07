@@ -2,11 +2,18 @@ import asyncio
 import curses
 import sys
 from datetime import datetime
+from queue import Queue
 
 ESC_KEY = 27
 
 
 class Widget:
+
+    def __init__(self, am):
+        '''
+        Register app manager with each widget
+        '''
+        self.am = am
 
     def show(self):
         '''
@@ -36,7 +43,8 @@ class Widget:
             self.show_task = asyncio.async(self.show())
             self.loop.run_forever()
         finally:
-            self.loop.close()
+            pass
+            # self.loop.close()
 
     def stop(self):
         '''
@@ -90,6 +98,7 @@ class MainMenu(Widget):
             self.stop()
         elif key in {ord('s'), ord('S')}:
             self.stop()
+            self.am.register_intent(Timer)
 
     def show(self):
         BEGIN_Y = (curses.LINES - 1) // 2 - self.HEIGHT // 2
@@ -113,17 +122,23 @@ class MainMenu(Widget):
 
 
 class AppManager:
+    def __init__(self):
+        self.intents = Queue(1)
+        self.intents.put(MainMenu)
 
     def run(self, stdscr):
         # Invisible cursor
         curses.curs_set(0)
-        self.show_main_menu()
 
-    def show_main_menu(self):
-        MainMenu().run()
+        while not self.intents.empty():
+            widget_class = self.intents.get()
+            widget_class(self).run()
 
-    def show_timer(self):
-        Timer().run()
+    def register_intent(self, widget_class):
+        '''
+        Register next widget to show
+        '''
+        self.intents.put(widget_class)
 
 
 if __name__ == "__main__":
