@@ -99,7 +99,7 @@ class MainMenu(Widget):
         self.w.border(0)
 
         # Add welcome message at the top
-        top_message = "Welcome to Brexercise (Break and Exercise)!"
+        top_message = "Take a break, go exercise!"
         self.w.addstr(
             0, self.WIDTH // 2 - len(top_message) // 2, top_message)
         self.w.addstr(2, 2, "Select from one of the following options:")
@@ -117,6 +117,7 @@ class AppManager:
     def run(self, stdscr):
         # Invisible cursor
         curses.curs_set(0)
+        self.show_main_menu()
 
     def show_main_menu(self):
         MainMenu().run()
