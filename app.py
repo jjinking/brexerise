@@ -5,7 +5,7 @@ from datetime import datetime
 from queue import Queue
 
 
-ESC_KEY = 27
+KEY = {'ESC': 27}
 
 
 class Widget:
@@ -30,7 +30,7 @@ class Widget:
         Handle user input key by running corresponding function
         '''
         key = self.w.getch()
-        if key in {ESC_KEY, ord('q'), ord('Q')}:
+        if key in {KEY['ESC'], ord('q'), ord('Q')}:
             self.stop()
             self.am.stop()
 
@@ -59,15 +59,17 @@ class Timer(Widget):
 
     HEIGHT = 10
     WIDTH = 46
-    # INTERVAL = 30 * 60
-    INTERVAL = 1
+
+    # Time intervals in seconds
+    INTERVAL_WORK = 60 * 60  # 1 hour
+    INTERVAL_BREAK = 5 * 60  # 5 minutes
 
     def process_input(self):
         key = self.w.getch()
         if key in {ord('b'), ord('B')}:
             self.am.register_intent(MainMenu)
             self.stop()
-        elif key in {ESC_KEY, ord('q'), ord('Q')}:
+        elif key in {KEY['ESC'], ord('q'), ord('Q')}:
             self.stop()
             self.am.stop()
 
@@ -87,18 +89,26 @@ class Timer(Widget):
         self.w.addstr(5, 4, "Q - Exit Program")
         while True:
             time_diff = (datetime.now() - time_start).total_seconds()
-            time_remain = self.INTERVAL - time_diff
+            time_remain = self.INTERVAL_WORK - time_diff
+            # Take a break when time runs out
             if time_remain <= 0:
+                # Notify user it's breaktime
                 for _ in range(5):
                     curses.flash()
                     curses.beep()
                     yield from asyncio.sleep(1)
-                self.am.register_intent(MainMenu)
-                self.stop()
+
+                # Take a break (account for the flash/beep time above)
+                yield from asyncio.sleep(self.INTERVAL_BREAK - 5)
+
+                # Reset clock
+                time_start = datetime.now()
+                continue
+
             remaining_min, remaining_sec = divmod(time_remain, 60)
             # Countdown
-            self.w.addstr(8, 2, "{} minutes, {:2.0f} seconds".format(
-                remaining_min, remaining_sec))
+            self.w.addstr(8, 2, "{:d} minutes, {:d} seconds".format(
+                int(remaining_min), int(remaining_sec)))
             self.w.refresh()
             yield from asyncio.sleep(0.2)
 
@@ -110,7 +120,7 @@ class MainMenu(Widget):
 
     def process_input(self):
         key = self.w.getch()
-        if key in {ESC_KEY, ord('q'), ord('Q')}:
+        if key in {KEY['ESC'], ord('q'), ord('Q')}:
             self.stop()
             self.am.stop()
         elif key in {ord('s'), ord('S')}:
