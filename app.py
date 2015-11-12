@@ -2,7 +2,6 @@ import asyncio
 import curses
 import sys
 from datetime import datetime
-from queue import Queue
 
 
 KEY = {'ESC': 27}
