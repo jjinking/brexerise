@@ -1,11 +1,9 @@
 import asyncio
 import curses
-import logging
 import sys
 from datetime import datetime
 from queue import Queue
 
-logging.basicConfig(filename='app2.log', level=logging.DEBUG)
 
 ESC_KEY = 27
 
@@ -23,6 +21,8 @@ class Widget:
         Must implement this method to display window
         '''
         raise NotImplementedError("Method not implemented")
+
+    # Do this instead of decorators, so that subclasses get this automatically
     show = asyncio.coroutine(show)
 
     def process_input(self):
@@ -30,14 +30,14 @@ class Widget:
         Handle user input key by running corresponding function
         '''
         key = self.w.getch()
-        if key in {ord('q'), ord('Q')}:
+        if key in {ESC_KEY, ord('q'), ord('Q')}:
             self.stop()
+            self.am.stop()
 
     def run(self):
         '''
         Show this widget and set up keyboard listener
         '''
-        logging.info("Starting Widget.run")
         self.loop = asyncio.get_event_loop()
         # Add listener for user keyboard input
         self.loop.add_reader(sys.stdin, self.process_input)
@@ -50,10 +50,8 @@ class Widget:
         '''
         Stop showing this widget
         '''
-        logging.info("Stopping widget show task")
         self.show_task.cancel()
         self.loop.remove_reader(sys.stdin)
-        logging.info("Finished stopping widget")
 
 
 class Timer(Widget):
@@ -66,10 +64,10 @@ class Timer(Widget):
         if key == ESC_KEY:
             sys.exit(1)
         elif key in {ord('q'), ord('Q')}:
-            sys.exit(1)
+            self.stop()
+            self.am.stop()
 
     def show(self):
-        logging.info("Starting Timer.show")
         BEGIN_Y = (curses.LINES - 1) // 2 - self.HEIGHT // 2
         BEGIN_X = (curses.COLS - 1) // 2 - self.WIDTH // 2
         self.w = curses.newwin(self.HEIGHT, self.WIDTH, BEGIN_Y, BEGIN_X)
@@ -98,8 +96,7 @@ class MainMenu(Widget):
         key = self.w.getch()
         if key in {ESC_KEY, ord('q'), ord('Q')}:
             self.stop()
-            self.loop.stop()
-            # self.loop.close()
+            self.am.stop()
         elif key in {ord('s'), ord('S')}:
             self.am.register_intent(Timer)
             self.stop()
@@ -129,34 +126,38 @@ class AppManager:
     def __init__(self):
         self.intents = asyncio.Queue(maxsize=1)
         self.intents.put_nowait(MainMenu)
+        self.loop = None
+        self.main_task = None
 
     def main(self):
-        logging.info("Started AppManager.main")
         while True:
             widget_class = yield from self.intents.get()
-            logging.info("Acquired {} from intents".format(widget_class))
             yield from widget_class(self).run()
-            logging.info("Finished running {}".format(str(widget_class)))
-        logging.info("Finished AppManager.main")
     main = asyncio.coroutine(main)
 
     def run(self, stdscr):
-        logging.info("Starting AppManager.run")
-
         # Invisible cursor
         curses.curs_set(0)
 
-        loop = asyncio.get_event_loop()
-        asyncio.async(self.main())
-        loop.run_forever()
-        logging.info("Finished AppManager.run")
+        self.loop = asyncio.get_event_loop()
+        self.main_task = asyncio.async(self.main())
+        try:
+            self.loop.run_forever()
+        finally:
+            self.loop.close()
 
     def register_intent(self, widget_class):
         '''
         Register next widget to show
         '''
-        logging.info("Registering new widget {}".format(str(widget_class)))
         self.intents.put_nowait(widget_class)
+
+    def stop(self):
+        '''
+        Stop the main loop
+        '''
+        self.main_task.cancel()
+        self.loop.stop()
 
 
 if __name__ == "__main__":
