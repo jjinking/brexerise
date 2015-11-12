@@ -1,6 +1,7 @@
 import asyncio
 import curses
 import sys
+import time
 from datetime import datetime
 from queue import Queue
 
@@ -59,7 +60,8 @@ class Timer(Widget):
 
     HEIGHT = 10
     WIDTH = 46
-    INTERVAL = 30 * 60
+    # INTERVAL = 30 * 60
+    INTERVAL = 2
 
     def process_input(self):
         key = self.w.getch()
@@ -85,8 +87,14 @@ class Timer(Widget):
         self.w.addstr(4, 4, "B - Back to Main Menu")
         self.w.addstr(5, 4, "Q - Exit Program")
         while True:
-            remaining_min, remaining_sec = divmod(
-                self.INTERVAL - (datetime.now() - time_start).total_seconds(), 60)
+            time_diff = (datetime.now() - time_start).total_seconds()
+            time_remain = self.INTERVAL - time_diff
+            if time_remain <= 0:
+                for _ in range(5):
+                    curses.flash()
+                    curses.beep()
+                    time.sleep(.4)
+            remaining_min, remaining_sec = divmod(time_remain, 60)
             # Countdown
             self.w.addstr(8, 2, "{} minutes, {:2.0f} seconds".format(
                 remaining_min, remaining_sec))
