@@ -62,6 +62,8 @@ class Timer(Widget):
     # Time intervals in seconds
     INTERVAL_WORK = 60 * 60  # 1 hour
     INTERVAL_BREAK = 5 * 60  # 5 minutes
+    # INTERVAL_WORK = 2  # 1 hour
+    # INTERVAL_BREAK = 6  # 5 minutes
 
     def process_input(self):
         key = self.w.getch()
@@ -77,15 +79,14 @@ class Timer(Widget):
         BEGIN_Y = (curses.LINES - 1) // 2 - self.HEIGHT // 2
         BEGIN_X = (curses.COLS - 1) // 2 - self.WIDTH // 2
         self.w = curses.newwin(self.HEIGHT, self.WIDTH, BEGIN_Y, BEGIN_X)
+        self.w.keypad(True)
         self.w.border(0)
 
         # Add welcome message at the top
-        top_message = "Running Timer"
-        self.w.addstr(
-            0, self.WIDTH // 2 - len(top_message) // 2, top_message)
-        self.w.addstr(2, 2, "Select from one of the following options:")
-        self.w.addstr(4, 4, "B - Back to Main Menu")
-        self.w.addstr(5, 4, "Q - Exit Program")
+        header = "Timer"
+        self.w.addstr(0, self.WIDTH // 2 - len(header) // 2, header)
+        self.w.addstr(2, 2, "Time remaining until break:")
+        self.w.addstr(8, 2, "B - Back to Main Menu  Q - Exit Program")
         while True:
             time_diff = (datetime.now() - time_start).total_seconds()
             time_remain = self.INTERVAL_WORK - time_diff
@@ -106,7 +107,7 @@ class Timer(Widget):
 
             remaining_min, remaining_sec = divmod(time_remain, 60)
             # Countdown
-            self.w.addstr(8, 2, "{:d} minutes, {:d} seconds".format(
+            self.w.addstr(4, 12, "{:d} Minutes  {:d} Seconds".format(
                 int(remaining_min), int(remaining_sec)))
             self.w.refresh()
             yield from asyncio.sleep(0.2)
@@ -130,19 +131,19 @@ class MainMenu(Widget):
         BEGIN_Y = (curses.LINES - 1) // 2 - self.HEIGHT // 2
         BEGIN_X = (curses.COLS - 1) // 2 - self.WIDTH // 2
         self.w = curses.newwin(self.HEIGHT, self.WIDTH, BEGIN_Y, BEGIN_X)
+        self.w.keypad(True)
         # Window border
         self.w.border(0)
 
         # Add welcome message at the top
-        top_message = "Take a break, go exercise!"
-        self.w.addstr(
-            0, self.WIDTH // 2 - len(top_message) // 2, top_message)
+        header = "Take a break, go exercise!"
+        self.w.addstr(0, self.WIDTH // 2 - len(header) // 2, header)
         self.w.addstr(2, 2, "Select from one of the following options:")
         self.w.addstr(4, 4, "S - Start Timer")
         self.w.addstr(5, 4, "Q - Exit Program")
         while True:
             self.w.addstr(
-                8, 2, datetime.now().strftime("%A, %d. %B %Y %I:%M:%S%p"))
+                8, 2, datetime.now().strftime("%A %B %d, %Y  %I:%M:%S%p"))
             self.w.refresh()
             yield from asyncio.sleep(0.2)
 
@@ -187,7 +188,8 @@ class AppManager:
 
 if __name__ == "__main__":
     try:
-        curses.wrapper(AppManager().run)
+        am = AppManager()
+        curses.wrapper(am.run)
     except KeyboardInterrupt:
         sys.stderr.write("Ctrl-c exit\n\n")
         sys.exit(1)
