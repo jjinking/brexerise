@@ -62,8 +62,8 @@ class Timer(Widget):
     # Time intervals in seconds
     INTERVAL_WORK = 60 * 60  # 1 hour
     INTERVAL_BREAK = 5 * 60  # 5 minutes
-    # INTERVAL_WORK = 2  # 1 hour
-    # INTERVAL_BREAK = 6  # 5 minutes
+    # INTERVAL_WORK = 5
+    # INTERVAL_BREAK = 6
 
     def process_input(self):
         key = self.w.getch()
@@ -107,7 +107,7 @@ class Timer(Widget):
 
             remaining_min, remaining_sec = divmod(time_remain, 60)
             # Countdown
-            self.w.addstr(4, 12, "{:d} Minutes  {:d} Seconds".format(
+            self.w.addstr(4, 12, "{:2d} Minutes  {:2d} Seconds".format(
                 int(remaining_min), int(remaining_sec)))
             self.w.refresh()
             yield from asyncio.sleep(0.2)
