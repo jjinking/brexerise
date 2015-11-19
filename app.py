@@ -163,7 +163,11 @@ class AppManager:
 
     def run(self, stdscr):
         # Invisible cursor
-        curses.curs_set(False)
+        try:
+            curses.curs_set(False)
+        except:
+            # Ugly hack for no TERM support
+            pass
 
         self.loop = asyncio.get_event_loop()
         self.main_task = asyncio.async(self.main())
