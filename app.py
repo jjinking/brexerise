@@ -163,7 +163,7 @@ class AppManager:
 
     def run(self, stdscr):
         # Invisible cursor
-        curses.curs_set(0)
+        curses.curs_set(False)
 
         self.loop = asyncio.get_event_loop()
         self.main_task = asyncio.async(self.main())
