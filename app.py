@@ -1,10 +1,20 @@
 import asyncio
 import curses
+import math
 import sys
 from datetime import datetime
 
 
 KEY = {'ESC': 27}
+
+
+class Config:
+    # Time intervals in seconds
+    INTERVAL_WORK = 3
+    INTERVAL_BREAK = 1
+    # INTERVAL_WORK = 60 * 60  # 1 hour
+    # INTERVAL_BREAK = 5 * 60  # 5 minutes
+    N_BEEPS = 3
 
 
 class Widget:
@@ -59,12 +69,6 @@ class Timer(Widget):
     HEIGHT = 10
     WIDTH = 46
 
-    # Time intervals in seconds
-    INTERVAL_WORK = 60 * 60  # 1 hour
-    INTERVAL_BREAK = 5 * 60  # 5 minutes
-    # INTERVAL_WORK = 5
-    # INTERVAL_BREAK = 6
-
     def process_input(self):
         key = self.w.getch()
         if key in {ord('b'), ord('B')}:
@@ -89,17 +93,22 @@ class Timer(Widget):
         self.w.addstr(8, 2, "B - Back to Main Menu  Q - Exit Program")
         while True:
             time_diff = (datetime.now() - time_start).total_seconds()
-            time_remain = self.INTERVAL_WORK - time_diff
+            time_remain = self.am.config.INTERVAL_WORK - time_diff
             # Take a break when time runs out
             if time_remain <= 0:
+                self.w.addstr(
+                    4, 12, "{:2d} Minutes  {:2d} Seconds".format(0, 0))
+                self.w.refresh()
+
                 # Notify user it's breaktime
-                for _ in range(5):
+                for _ in range(self.am.config.N_BEEPS):
                     curses.flash()
                     curses.beep()
                     yield from asyncio.sleep(1)
 
                 # Take a break (account for the flash/beep time above)
-                yield from asyncio.sleep(self.INTERVAL_BREAK - 5)
+                yield from asyncio.sleep(
+                    self.am.config.INTERVAL_BREAK - self.am.config.N_BEEPS)
 
                 # Reset clock
                 time_start = datetime.now()
@@ -108,7 +117,7 @@ class Timer(Widget):
             remaining_min, remaining_sec = divmod(time_remain, 60)
             # Countdown
             self.w.addstr(4, 12, "{:2d} Minutes  {:2d} Seconds".format(
-                int(remaining_min), int(remaining_sec)))
+                int(remaining_min), math.ceil(remaining_sec)))
             self.w.refresh()
             yield from asyncio.sleep(0.2)
 
@@ -149,7 +158,8 @@ class MainMenu(Widget):
 
 
 class AppManager:
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         self.loop = None
         self.main_task = None
         self.intents = asyncio.Queue(maxsize=1)
@@ -192,7 +202,7 @@ class AppManager:
 
 if __name__ == "__main__":
     try:
-        am = AppManager()
+        am = AppManager(Config())
         curses.wrapper(am.run)
     except KeyboardInterrupt:
         sys.stderr.write("Ctrl-c exit\n\n")
