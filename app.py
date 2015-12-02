@@ -64,6 +64,62 @@ class Widget:
         self.loop.remove_reader(sys.stdin)
 
 
+class Options(Widget):
+
+    HEIGHT = 10
+    WIDTH = 46
+
+    def process_input(self):
+        key = self.w.getch()
+        if key in {ord('b'), ord('B')}:
+            self.am.register_intent(MainMenu)
+            self.stop()
+        elif key in {KEY['ESC'], ord('q'), ord('Q')}:
+            self.stop()
+            self.am.stop()
+        elif key in {ord('W'), ord('w')}:
+            curses.curs_set(True)
+            curses.echo()
+            self.am.config.INTERVAL_WORK = int(self.w.getstr(4, 31))
+            curses.curs_set(False)
+            curses.noecho()
+        elif key in {ord('E'), ord('e')}:
+            curses.curs_set(True)
+            curses.echo()
+            self.am.config.INTERVAL_BREAK = int(self.w.getstr(5, 35))
+            curses.curs_set(False)
+            curses.noecho()
+        elif key in {ord('A'), ord('a')}:
+            curses.curs_set(True)
+            curses.echo()
+            self.am.config.N_BEEPS = int(self.w.getstr(6, 23))
+            curses.curs_set(False)
+            curses.noecho()
+
+    def show(self):
+        BEGIN_Y = (curses.LINES - 1) // 2 - self.HEIGHT // 2
+        BEGIN_X = (curses.COLS - 1) // 2 - self.WIDTH // 2
+        self.w = curses.newwin(self.HEIGHT, self.WIDTH, BEGIN_Y, BEGIN_X)
+        self.w.keypad(True)
+        self.w.border(0)
+
+        # Add welcome message at the top
+        header = "Options"
+        self.w.addstr(0, self.WIDTH // 2 - len(header) // 2, header)
+        h2_txt = "To edit, press the key in ():"
+        work_opt_txt = "(W) Work interval (seconds): {}"
+        exer_opt_txt = "(E) Exercise interval (seconds): {}"
+        beep_opt_txt = "(A) Number of beeps: {}"
+        self.w.addstr(2, 2, h2_txt)
+        self.w.addstr(4, 2, work_opt_txt.format(self.am.config.INTERVAL_WORK))
+        self.w.addstr(5, 2, exer_opt_txt.format(self.am.config.INTERVAL_BREAK))
+        self.w.addstr(6, 2, beep_opt_txt.format(self.am.config.N_BEEPS))
+        self.w.addstr(8, 2, "B - Back to Main Menu  Q - Exit Program")
+        while True:
+            self.w.refresh()
+            yield from asyncio.sleep(0.2)
+
+
 class Timer(Widget):
 
     HEIGHT = 10
@@ -135,6 +191,9 @@ class MainMenu(Widget):
         elif key in {ord('s'), ord('S')}:
             self.am.register_intent(Timer)
             self.stop()
+        elif key in {ord('o'), ord('O')}:
+            self.am.register_intent(Options)
+            self.stop()
 
     def show(self):
         BEGIN_Y = (curses.LINES - 1) // 2 - self.HEIGHT // 2
@@ -149,7 +208,8 @@ class MainMenu(Widget):
         self.w.addstr(0, self.WIDTH // 2 - len(header) // 2, header)
         self.w.addstr(2, 2, "Select from one of the following options:")
         self.w.addstr(4, 4, "S - Start Timer")
-        self.w.addstr(5, 4, "Q - Exit Program")
+        self.w.addstr(5, 4, "O - Options")
+        self.w.addstr(6, 4, "Q - Exit Program")
         while True:
             self.w.addstr(
                 8, 2, datetime.now().strftime("%A %B %d, %Y  %I:%M:%S%p"))
