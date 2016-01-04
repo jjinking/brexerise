@@ -257,6 +257,7 @@ class AppManager:
         Stop the main loop
         '''
         self.main_task.cancel()
+        self.loop._run_once()
         self.loop.stop()
 
 
